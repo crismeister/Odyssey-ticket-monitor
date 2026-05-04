@@ -209,7 +209,7 @@ def send_ntfy(title: str, message: str, buy_url: str, priority: str = "urgent") 
             f"https://ntfy.sh/{NTFY_TOPIC}",
             data=message.encode("utf-8"),
             headers={
-                "Title":    title,
+                "Title":    title.encode("utf-8").decode("latin-1", errors="ignore"),
                 "Priority": priority,
                 "Tags":     "movie_camera,rotating_light,ticket",
                 "Click":    buy_url,
@@ -228,7 +228,7 @@ def send_test_notification() -> None:
     """Send a test notification to confirm setup is working."""
     log.info("Sending test notification...")
     send_ntfy(
-        title="✅ Odyssey Monitor is Active",
+        title="Odyssey Monitor is Active",
         message=(
             "Your ticket monitor is set up correctly! "
             "You'll get alerted the moment tickets go on sale at "
