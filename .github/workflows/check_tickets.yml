@@ -1,1 +1,74 @@
+name: 🎟️ Odyssey Ticket Monitor
+
+on:
+  # ── Run every 10 minutes around the clock ──────────────────────
+  schedule:
+    - cron: "*/10 * * * *"
+
+  # ── Also allow manual trigger (for testing) ───────────────────
+  workflow_dispatch:
+    inputs:
+      send_test:
+        description: "Send a test notification?"
+        required: false
+        default: "false"
+
+  # ── Run on push to main (verifies setup works) ────────────────
+  push:
+    branches: [main]
+
+jobs:
+  check-tickets:
+    name: Check for Tickets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5      # safety limit
+
+    steps:
+      # ── 1. Checkout repo ───────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python ───────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # ── 3. Install dependencies ────────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 4. Restore cached state from previous run ──────────────
+      #    Uses a prefix key so we always restore the most recent
+      #    state, even though each save uses a unique key.
+      - name: Restore state cache
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: ticket-state-${{ github.run_id }}
+          restore-keys: |
+            ticket-state-
+
+      # ── 5a. Send test notification (manual trigger only) ───────
+      - name: Send test notification
+        if: github.event.inputs.send_test == 'true'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python checker.py test
+
+      # ── 5b. Run the ticket checker ─────────────────────────────
+      - name: Run ticket checker
+        if: github.event.inputs.send_test != 'true'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python checker.py
+
+      # ── 6. Save updated state for next run ─────────────────────
+      - name: Save state cache
+        if: always()    # save even if checker errors, to preserve state
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: ticket-state-${{ github.run_id }}
 
